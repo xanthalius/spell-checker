@@ -125,7 +125,6 @@ def checkConversionBinaries(*args):
 
 
 import subprocess
-import time
 
 def compileBDIC(path, name, remove=False):
     command = [BIN_PATH, os.path.join(path, name)]
@@ -140,17 +139,19 @@ def compileBDIC(path, name, remove=False):
     if os.path.exists(bdic_file):
         os.remove(bdic_file)
     
-    # Introduce a short delay before renaming the new .bdic file
-    time.sleep(0.1)
-    
     # Rename the new .bdic file
-    os.rename(os.path.join(path, name + ".bdic"), bdic_file)
+    tmp_bdic_file = os.path.join(path, name + ".bdic")
+    os.rename(tmp_bdic_file, bdic_file)
     
     print(f"Compiled {name}")
     
     if res.returncode != 0:
         aqt.mw.taskman.run_on_main(
             lambda: showWarning(f"Dictionary {name} seems to be broken. Process output:\n{res.stdout}"))
+
+# Example usage:
+# compileBDIC("path_to_dictionary", "dictionary_name", remove=True)
+
 
 
 def download(url):
