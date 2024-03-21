@@ -124,6 +124,8 @@ def checkConversionBinaries(*args):
         saveWrite(done_file, str(date.today()), mode="w")
 
 
+import subprocess
+
 def compileBDIC(path, name, remove=False):
     command = [BIN_PATH, os.path.join(path, name)]
     if os.name != 'nt':
@@ -131,17 +133,20 @@ def compileBDIC(path, name, remove=False):
         mode |= (mode & 0o444) >> 2  # copy R bits to X
         os.chmod(BIN_PATH, mode)
     res = subprocess.run(command, shell=True, capture_output=True, text=True)
-    if remove:
-        ex = [".dic", ".aff"]
-        for e in ex:
-            os.remove(os.path.join(path, name + e))
+    
+    # Remove existing .bdic file if it exists
+    bdic_file = os.path.join(DICT_DIR, name + ".bdic")
+    if os.path.exists(bdic_file):
+        os.remove(bdic_file)
+    
+    # Rename the new .bdic file
+    os.rename(os.path.join(path, name + ".bdic"), bdic_file)
+    
     print(f"Compiled {name}")
+    
     if res.returncode != 0:
         aqt.mw.taskman.run_on_main(
             lambda: showWarning(f"Dictionary {name} seems to be broken. Process output:\n{res.stdout}"))
-    else:
-        os.rename(os.path.join(path, name + ".bdic"), os.path.join(DICT_DIR, name + ".bdic"))
-
 
 def download(url):
     try:
