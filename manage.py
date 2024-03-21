@@ -63,21 +63,9 @@ def compilePersonal(*args):
     compileUserDictionary("personal")
 
 
-import shutil
-
 def compileUserDictionary(name, *args):
     base = os.path.join(USER_DICT_PATH, name)
     tmp_files = []
-
-    old_dictionary_file = base + ".dic"
-    if os.path.isfile(old_dictionary_file):
-        # Backup the old dictionary
-        backup_file = base + "_backup.dic"
-        shutil.copy(old_dictionary_file, backup_file)
-
-        # Remove the old dictionary
-        os.remove(old_dictionary_file)
-
     if os.path.isfile(base + ".txt"):
         with open(base + ".txt", "rbU") as f:
             line_count = sum(1 for _ in f)
@@ -86,10 +74,8 @@ def compileUserDictionary(name, *args):
             for line in in_file:
                 out_file.write(line)
             tmp_files.append(out_file.name)
-
     if not os.path.isfile(base + ".dic"):
         return
-
     if not os.path.isfile(base + ".aff"):
         unique_chars = set()
         with open(base + ".dic", 'r') as file:
@@ -100,13 +86,10 @@ def compileUserDictionary(name, *args):
         with open(base + ".aff", 'w') as file:
             file.write("".join(content))
             tmp_files.append(file.name)
-
     compileBDIC(USER_DICT_PATH, name, remove=False)
-
-    # Clean up temporary files
     for f in tmp_files:
-        if os.path.isfile(f):
-            os.remove(f)
+        os.remove(f)
+
 
 @background_op(with_progress=True, label="Spell checker:\nDownloading binaries for .bdic conversion...")
 def checkConversionBinaries(*args):
@@ -124,8 +107,6 @@ def checkConversionBinaries(*args):
         saveWrite(done_file, str(date.today()), mode="w")
 
 
-import subprocess
-
 def compileBDIC(path, name, remove=False):
     command = [BIN_PATH, os.path.join(path, name)]
     if os.name != 'nt':
@@ -133,25 +114,16 @@ def compileBDIC(path, name, remove=False):
         mode |= (mode & 0o444) >> 2  # copy R bits to X
         os.chmod(BIN_PATH, mode)
     res = subprocess.run(command, shell=True, capture_output=True, text=True)
-    
-    # Remove existing .bdic file if it exists
-    bdic_file = os.path.join(DICT_DIR, name + ".bdic")
-    if os.path.exists(bdic_file):
-        os.remove(bdic_file)
-    
-    # Rename the new .bdic file
-    tmp_bdic_file = os.path.join(path, name + ".bdic")
-    os.rename(tmp_bdic_file, bdic_file)
-    
+    if remove:
+        ex = [".dic", ".aff"]
+        for e in ex:
+            os.remove(os.path.join(path, name + e))
     print(f"Compiled {name}")
-    
     if res.returncode != 0:
         aqt.mw.taskman.run_on_main(
             lambda: showWarning(f"Dictionary {name} seems to be broken. Process output:\n{res.stdout}"))
-
-# Example usage:
-# compileBDIC("path_to_dictionary", "dictionary_name", remove=True)
-
+    else:
+        os.rename(os.path.join(path, name + ".bdic"), os.path.join(DICT_DIR, name + ".bdic"))
 
 
 def download(url):
